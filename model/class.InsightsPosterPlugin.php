@@ -127,27 +127,49 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                     }
                     $total_posted = 0;
                     if (sizeof($insights) > 0) {
-                        $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis ",
+                        $twitter_users = array();
+                        $user_dao = DAOFactory::getDAO('UserDAO');
+                        $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis",
                             __METHOD__.','.__LINE__);
 
                         //First, push HIGH emphasis
                         foreach ($insights as $insight) {
-                            if ($insight->instance->network == "twitter" && $insight->emphasis == Insight::EMPHASIS_HIGH
-                                && $insight->instance->total_follows_in_system > 1000) {
-                                self::postInsight($insight, $logger, $options);
-                                $total_posted++;
-                                break;
+                            if ($insight->instance->network == "twitter"
+                                && $insight->emphasis == Insight::EMPHASIS_HIGH ) {
+                                if (!isset($twitter_users[$insight->instance->network_username])) {
+                                    $twitter_users[$insight->instance->network_username] =
+                                        $user_dao->getUserByName($insight->instance->network_username, 'twitter');
+                                }
+                                if ($twitter_users[$insight->instance->network_username]->follower_count > 1000) {
+                                    self::postInsight($insight, $logger, $options);
+                                    $total_posted++;
+                                    break;
+                                } else {
+                                    $logger->logUserInfo(
+                                        $twitter_users[$insight->instance->network_username]->follower_count.
+                                        " under follower count threshold", __METHOD__.','.__LINE__);
+                                }
                             }
                         }
+                        $logger->logUserInfo("Moving onto MED emphasis", __METHOD__.','.__LINE__);
                         //If HIGH emphasis insight didn't exist, push MED
                         if ($total_posted == 0) {
                             foreach ($insights as $insight) {
                                 if ($insight->instance->network == "twitter"
-                                    && $insight->emphasis == Insight::EMPHASIS_MED
-                                    && $insight->instance->total_follows_in_system > 1000) {
-                                    self::postInsight($insight, $logger, $options);
-                                    $total_posted++;
-                                    break;
+                                    && $insight->emphasis == Insight::EMPHASIS_MED ) {
+                                    if (!isset($twitter_users[$insight->instance->network_username])) {
+                                        $twitter_users[$insight->instance->network_username] =
+                                            $user_dao->getUserByName($insight->instance->network_username, 'twitter');
+                                    }
+                                    if ($twitter_users[$insight->instance->network_username]->follower_count > 1000) {
+                                        self::postInsight($insight, $logger, $options);
+                                        $total_posted++;
+                                        break;
+                                    } else {
+                                        $logger->logUserInfo(
+                                            $twitter_users[$insight->instance->network_username]->follower_count.
+                                            " under follower count threshold", __METHOD__.','.__LINE__);
+                                    }
                                 }
                             }
                         }
@@ -223,7 +245,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
         $endpoint = new TwitterAPIEndpoint("/statuses/update");
         $api = new PosterTwitterAPIAccessorOAuth($options["oauth_access_token"]->option_value,
             $options["oauth_access_token_secret"]->option_value,
-            $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance, 
+            $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance,
             2300, 2);
         $result = $api->apiPostRequest( $endpoint, array('status'=>$tweet));
         $logger->logUserInfo("Tweet posted ", __METHOD__.','.__LINE__);
