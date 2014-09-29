@@ -58,7 +58,6 @@ class PosterTwitterAPIAccessorOAuth extends TwitterAPIAccessorOAuth {
      */
     public function apiPostRequest(TwitterAPIEndpoint $endpoint, $args=array(), $id=null, $suppress_404_error=false) {
         $url = $endpoint->getPathWithID($id);
-        echo $url;
         $content = $this->to->OAuthRequest($url, 'POST', $args);
         $status = $this->to->lastStatusCode();
         return array($status, $content);

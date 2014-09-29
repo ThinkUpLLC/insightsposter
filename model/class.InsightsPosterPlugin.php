@@ -68,7 +68,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
         if (isset($options['consumer_key']->option_value) && isset($options['consumer_secret']->option_value)
             && isset($options['oauth_access_token']->option_value)
             && isset($options['oauth_access_token_secret']->option_value)) {
-            // Only send pushes after 7am local time
+
+            // Get owner timezone
             $owner_dao = DAOFactory::getDAO('OwnerDAO');
             $owner = $owner_dao->getByEmail(Session::getLoggedInUser());
             $tz = $owner->timezone;
@@ -76,7 +77,6 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                 $config = Config::getInstance();
                 $tz = $config->getValue('timezone');
             }
-
             // Is it after 9am local time?
             if (!empty($tz)) {
                 $original_tz = date_default_timezone_get();
@@ -86,77 +86,104 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
             } else {
                 $localize_hour = (int)date('G', $this->current_timestamp);
             }
-//            if ($localized_hour >= 9) {
-            if (true) {
+            if ($localized_hour >= 9) {
                 //Get the last time insights were posted
+                $do_post = false;
                 $options = $plugin_option_dao->getOptionsHash('insightsposter');
-                if (isset($options['last_push_completion']->option_value)) {
-                    $last_push_completion = $options['last_push_completion']->option_value;
-                    $logger->logUserInfo("Last push completion was ".$last_push_completion, __METHOD__.','.__LINE__);
-                } else {
-                    $last_push_completion = false;
-                }
-
-                //Get insights since last pushed ID, or latest insight
-                $insight_dao = DAOFactory::getDAO('InsightDAO');
-                $insights = array();
-                if ($owner->is_admin) {
-                    if ($last_push_completion !== false ) {
-                        //Get all insights since last pushed insight creation date
-                        $insights = $insight_dao->getAllInstanceInsightsSince($last_push_completion);
-                    } else {
-                        // get last insight generated
-                        $insights = $insight_dao->getAllInstanceInsights($page_count=1);
+                if (isset($options['last_post_completion']->option_value)) {
+                    $last_post_completion = $options['last_post_completion']->option_value;
+                    $logger->logUserInfo("Last post completion was ".$last_post_completion, __METHOD__.','.__LINE__);
+                    $last_post_day = substr($last_daily, 0, 10);
+                    $today = date('Y-m-d');
+                    if ($last_post_day !== $today) {
+                        $do_post = true;
                     }
                 } else {
-                    if ($last_push_completion !== false ) {
-                        //Get insights since last pushed insight creation date
-                        $insights = $insight_dao->getAllOwnerInstanceInsightsSince($owner->id, $last_push_completion);
-                    } else {
-                        // get last insight generated
-                        $insights = $insight_dao->getAllOwnerInstanceInsights($owner->id, $page_count=1);
-                    }
+                    $last_post_completion = false;
+                    $do_post = true;
                 }
-                $total_pushed = 0;
-                if (sizeof($insights) > 0) {
-                    $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis ",
-                        __METHOD__.','.__LINE__);
 
-                    foreach ($insights as $insight) {
-                        if ($insight->instance->network == "twitter" && $insight->emphasis == Insight::EMPHASIS_HIGH) {
-                            self::postInsight($insight, $logger, $options);
-                            break;
+                if ($do_post) {
+                    //Get insights since last posted ID, or latest insight
+                    $insight_dao = DAOFactory::getDAO('InsightDAO');
+                    $insights = array();
+                    if ($owner->is_admin) {
+                        if ($last_post_completion !== false ) {
+                            //Get all insights since last posted insight creation date
+                            $insights = $insight_dao->getAllInstanceInsightsSince($last_post_completion);
+                        } else {
+                            // get last insight generated
+                            $insights = $insight_dao->getAllInstanceInsights($page_count=1);
+                        }
+                    } else {
+                        if ($last_post_completion !== false ) {
+                            //Get insights since last posted insight creation date
+                            $insights = $insight_dao->getAllOwnerInstanceInsightsSince($owner->id,
+                                $last_post_completion);
+                        } else {
+                            // get last insight generated
+                            $insights = $insight_dao->getAllOwnerInstanceInsights($owner->id, $page_count=1);
                         }
                     }
+                    $total_posted = 0;
+                    if (sizeof($insights) > 0) {
+                        $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis ",
+                            __METHOD__.','.__LINE__);
 
-                    // Update $last_push_completion in plugin settings
-                    if (isset($options['last_push_completion']->id)) {
-                        //update option
-                        $result = $plugin_option_dao->updateOption($options['last_push_completion']->id,
-                            'last_push_completion', date('Y-m-d H:i:s'));
-                        $logger->logInfo("Updated ".$result." option", __METHOD__.','.__LINE__);
-                    } else {
-                        //insert option
-                        $plugin_dao = DAOFactory::getDAO('PluginDAO');
-                        $plugin_id = $plugin_dao->getPluginId('insightsposter');
-                        $result = $plugin_option_dao->insertOption($plugin_id, 'last_push_completion',
-                            date('Y-m-d H:i:s'));
-                        $logger->logInfo("Inserted option ID ".$result, __METHOD__.','.__LINE__);
+                        //First, push HIGH emphasis
+                        foreach ($insights as $insight) {
+                            if ($insight->instance->network == "twitter" && $insight->emphasis == Insight::EMPHASIS_HIGH
+                                && $insight->instance->total_follows_in_system > 1000) {
+                                self::postInsight($insight, $logger, $options);
+                                $total_posted++;
+                                break;
+                            }
+                        }
+                        //If HIGH emphasis insight didn't exist, push MED
+                        if ($total_posted == 0) {
+                            foreach ($insights as $insight) {
+                                if ($insight->instance->network == "twitter"
+                                    && $insight->emphasis == Insight::EMPHASIS_MED
+                                    && $insight->instance->total_follows_in_system > 1000) {
+                                    self::postInsight($insight, $logger, $options);
+                                    $total_posted++;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ($total_posted > 0) {
+                            // Update $last_post_completion in plugin settings
+                            if (isset($options['last_post_completion']->id)) {
+                                //update option
+                                $result = $plugin_option_dao->updateOption($options['last_post_completion']->id,
+                                    'last_post_completion', date('Y-m-d H:i:s'));
+                                $logger->logInfo("Updated ".$result." option", __METHOD__.','.__LINE__);
+                            } else {
+                                //insert option
+                                $plugin_dao = DAOFactory::getDAO('PluginDAO');
+                                $plugin_id = $plugin_dao->getPluginId('insightsposter');
+                                $result = $plugin_option_dao->insertOption($plugin_id, 'last_post_completion',
+                                    date('Y-m-d H:i:s'));
+                                $logger->logInfo("Inserted option ID ".$result, __METHOD__.','.__LINE__);
+                            }
+                        }
                     }
-                }
-                if ($total_pushed > 0) {
-                    $logger->logUserSuccess("Pushed ".$total_pushed." insight".(($total_pushed == 1)?'':'s'),
-                        __METHOD__.','.__LINE__);
+                    if ($total_posted > 0) {
+                        $logger->logUserSuccess("Posted ".$total_posted." insight".(($total_posted == 1)?'':'s'),
+                            __METHOD__.','.__LINE__);
+                    } else {
+                        $logger->logInfo("No insights to post", __METHOD__.','.__LINE__);
+                    }
                 } else {
-                    $logger->logInfo("No insights to push.", __METHOD__.','.__LINE__);
+                    $logger->logInfo("Insight has been posted already today", __METHOD__.','.__LINE__);
                 }
             } else {
-                $logger->logInfo("It's too early in the am for posting insights.", __METHOD__.','.__LINE__);
+                $logger->logInfo("It's too early in the am for posting insights", __METHOD__.','.__LINE__);
             }
         } else {
-            $logger->logInfo("Insights Poster plugin isn't configured for use.", __METHOD__.','.__LINE__);
+            $logger->logInfo("Insights poster is not configured", __METHOD__.','.__LINE__);
         }
-        $logger->logUserSuccess("Completed insights poster.", __METHOD__.','.__LINE__);
     }
 
     public function getDashboardMenuItems($instance) {
@@ -170,26 +197,35 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
         return "";
     }
 
+    /**
+     * Post insight headline and link to Twitter as an @reply to the user it applies to, with headline shortened to
+     * fit in 140 characters.
+     * @param  Insight $insight
+     * @param  Logger $logger
+     * @param  arr $options
+     * @return void
+     */
     private function postInsight($insight, $logger, $options) {
         $terms = new InsightTerms($insight->instance->network);
-        $tweet = strip_tags(html_entity_decode($insight->headline));
-        $tweet = $terms->swapInSecondPerson($insight->instance->network_username, $tweet);
-        $tweet = '@'.$insight->instance->network_username." ".$tweet;
+        $headline = strip_tags(html_entity_decode($insight->headline));
+        $headline = $terms->swapInSecondPerson($insight->instance->network_username, $headline);
+
+        $tweet = '@'.$insight->instance->network_username." ";
         $url = Utils::getApplicationURL()."?u=".$insight->instance->network_username."&n=".
             $insight->instance->network."&d=".$insight_date."&s=". $insight->slug;
-        $tweet = $tweet . " " . $url;
+
+        $headline_size = 140 - (sizeof($tweet) + sizeof($url)) - 4;
+
+        $headline = substr($headline, 0, $headline_size);
+        $tweet = $tweet . $headline . "... " . $url;
         $logger->logUserInfo("Posting the following tweet: ".$tweet, __METHOD__.','.__LINE__);
 
         $endpoint = new TwitterAPIEndpoint("/statuses/update");
-        print_r($endpoint);
-        print_r($options);
         $api = new PosterTwitterAPIAccessorOAuth($options["oauth_access_token"]->option_value,
             $options["oauth_access_token_secret"]->option_value,
             $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance, 
             2300, 2);
-        print_r($api);
         $result = $api->apiPostRequest( $endpoint, array('status'=>$tweet));
-        print_r($result);
         $logger->logUserInfo("Tweet posted ", __METHOD__.','.__LINE__);
     }
 }
