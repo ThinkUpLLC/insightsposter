@@ -233,6 +233,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
         $headline = $terms->swapInSecondPerson($insight->instance->network_username, $headline);
 
         $tweet = '@'.$insight->instance->network_username." ";
+        $insight_date = urlencode(date('Y-m-d', strtotime($insight->date)));
         $url = Utils::getApplicationURL()."?u=".$insight->instance->network_username."&n=".
             $insight->instance->network."&d=".$insight_date."&s=". $insight->slug;
 
