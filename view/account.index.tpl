@@ -1,20 +1,19 @@
-<div class="plugin-info">
+  <div class="container">
+    <header class="container-header">
+      <h1>Insights Poster Plugin</h1>
+      <h2>Post ThinkUp insights to Twitter</h2>
+    </header>
 
-    <span class="pull-right">{insert name="help_link" id='insightsposter'}</span>
-    <h1>
-        <img src="{$site_root_path}plugins/insightsposter/assets/img/plugin_icon.png" class="plugin-image">
-        Insights Reposter Plugin
-    </h1>
-
-    <p>This plugin posts new ThinkUp insights to Twitter.</p>
-
-</div>
-
-{if $user_is_admin}
-
+    {if $user_is_admin}
+    {include file="_plugin.showhider.tpl"}
     {include file="_usermessage.tpl" field="setup"}
 
+    {/if}
+
+    {if $options_markup}
+    <p>
     {$options_markup}
+    </p>
+    {/if}
 
-{/if}
-
+</div>
