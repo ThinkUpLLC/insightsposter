@@ -37,6 +37,18 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      */
     var $current_timestamp;
 
+    /**
+     * Insights to exclude from posting because they're spammy or annoying
+     * @var array
+     */
+    var $insight_blacklist = array('biotracker.php');
+
+    /**
+     * Twitter users associated with the insight candidates.
+     * @var array
+     */
+    var $twitter_users = array();
+
     public function __construct($vals=null) {
         parent::__construct($vals);
         $this->folder_name = 'insightsposter';
@@ -127,51 +139,26 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                     }
                     $total_posted = 0;
                     if (sizeof($insights) > 0) {
-                        $twitter_users = array();
                         $user_dao = DAOFactory::getDAO('UserDAO');
                         $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis",
                             __METHOD__.','.__LINE__);
 
                         //First, push HIGH emphasis
                         foreach ($insights as $insight) {
-                            if ($insight->instance->network == "twitter"
-                                && $insight->instance->is_public == 1
-                                && $insight->emphasis == Insight::EMPHASIS_HIGH ) {
-                                if (!isset($twitter_users[$insight->instance->network_username])) {
-                                    $twitter_users[$insight->instance->network_username] =
-                                        $user_dao->getUserByName($insight->instance->network_username, 'twitter');
-                                }
-                                if ($twitter_users[$insight->instance->network_username]->follower_count > 1000) {
-                                    self::postInsight($insight, $logger, $options);
-                                    $total_posted++;
-                                    break;
-                                } else {
-                                    $logger->logUserInfo(
-                                        $twitter_users[$insight->instance->network_username]->follower_count.
-                                        " under follower count threshold", __METHOD__.','.__LINE__);
-                                }
+                            if (self::shouldPostInsight($insight, Insight::EMPHASIS_HIGH)) {
+                                self::postInsight($insight, $logger, $options);
+                                $total_posted++;
+                                break;
                             }
                         }
                         $logger->logUserInfo("Moving onto MED emphasis", __METHOD__.','.__LINE__);
                         //If HIGH emphasis insight didn't exist, push MED
                         if ($total_posted == 0) {
                             foreach ($insights as $insight) {
-                                if ($insight->instance->network == "twitter"
-                                    && $insight->instance->is_public == 1
-                                    && $insight->emphasis == Insight::EMPHASIS_MED ) {
-                                    if (!isset($twitter_users[$insight->instance->network_username])) {
-                                        $twitter_users[$insight->instance->network_username] =
-                                            $user_dao->getUserByName($insight->instance->network_username, 'twitter');
-                                    }
-                                    if ($twitter_users[$insight->instance->network_username]->follower_count > 1000) {
-                                        self::postInsight($insight, $logger, $options);
-                                        $total_posted++;
-                                        break;
-                                    } else {
-                                        $logger->logUserInfo(
-                                            $twitter_users[$insight->instance->network_username]->follower_count.
-                                            " under follower count threshold", __METHOD__.','.__LINE__);
-                                    }
+                                if (self::shouldPostInsight($insight, Insight::EMPHASIS_MED)) {
+                                    self::postInsight($insight, $logger, $options);
+                                    $total_posted++;
+                                    break;
                                 }
                             }
                         }
@@ -220,7 +207,37 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
     public function renderInstanceConfiguration($owner, $instance_username, $instance_network) {
         return "";
     }
-
+    /**
+     * Should this insight get posted to Twitter? It only should if:
+     * - The insight network is Twitter
+     * - The instance is public
+     * - The emphasis is high enough
+     * - The insight is not on the blacklist
+     * - The instance Twitter user has more than 1k followers
+     *
+     * @param  Insight $insight
+     * @param  int $emphasis Either Insight::EMPHASIS_HIGH or Insight::EMPHASIS_MED
+     * @return bool
+     */
+    private function shouldPostInsight($insight, $emphasis) {
+        $should_post = false;
+        if ($insight->instance->network == "twitter" && $insight->instance->is_public == 1
+            && $insight->emphasis == $emphasis && !in_array($insight->filename, $this->insight_blacklist) ) {
+            if (!isset($this->twitter_users[$insight->instance->network_username])) {
+                $this->twitter_users[$insight->instance->network_username] =
+                    $user_dao->getUserByName($insight->instance->network_username, 'twitter');
+            }
+            if ($this->twitter_users[$insight->instance->network_username]->follower_count > 1000) {
+                return true;
+            } else {
+                $logger = Logger::getInstance();
+                $logger->logUserInfo( $this->twitter_users[$insight->instance->network_username]->follower_count.
+                    " under follower count threshold", __METHOD__.','.__LINE__);
+                return false;
+            }
+        }
+        return false;
+    }
     /**
      * Post insight headline and link to Twitter as an @reply to the user it applies to, with headline shortened to
      * fit in 140 characters.
