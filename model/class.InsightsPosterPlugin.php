@@ -251,6 +251,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
             $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance,
             2300, 2);
         $result = $api->apiPostRequest( $endpoint, array('status'=>$tweet));
+        $logger->logUserInfo(Utils::varDumpToString($result), __METHOD__.','.__LINE__);
         $logger->logUserInfo("Tweet posted ", __METHOD__.','.__LINE__);
     }
 }
