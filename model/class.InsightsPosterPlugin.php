@@ -135,6 +135,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         //First, push HIGH emphasis
                         foreach ($insights as $insight) {
                             if ($insight->instance->network == "twitter"
+                                && $insight->instance->is_public == 1
                                 && $insight->emphasis == Insight::EMPHASIS_HIGH ) {
                                 if (!isset($twitter_users[$insight->instance->network_username])) {
                                     $twitter_users[$insight->instance->network_username] =
@@ -156,6 +157,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         if ($total_posted == 0) {
                             foreach ($insights as $insight) {
                                 if ($insight->instance->network == "twitter"
+                                    && $insight->instance->is_public == 1
                                     && $insight->emphasis == Insight::EMPHASIS_MED ) {
                                     if (!isset($twitter_users[$insight->instance->network_username])) {
                                         $twitter_users[$insight->instance->network_username] =
