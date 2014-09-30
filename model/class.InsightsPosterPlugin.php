@@ -105,9 +105,11 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                 if (isset($options['last_post_completion']->option_value)) {
                     $last_post_completion = $options['last_post_completion']->option_value;
                     $logger->logUserInfo("Last post completion was ".$last_post_completion, __METHOD__.','.__LINE__);
-                    $last_post_day = substr($last_daily, 0, 10);
+                    $last_post_day = substr($last_post_completion, 0, 10);
                     $today = date('Y-m-d');
                     if ($last_post_day !== $today) {
+                        $logger->logUserInfo("No post today ".$today. " != ".$last_post_day,
+                            __METHOD__.','.__LINE__);
                         $do_post = true;
                     }
                 } else {
