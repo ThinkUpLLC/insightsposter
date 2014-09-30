@@ -146,7 +146,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         //First, push HIGH emphasis
                         foreach ($insights as $insight) {
                             if (self::shouldPostInsight($insight, Insight::EMPHASIS_HIGH)) {
-                                self::postInsight($insight, $logger, $options);
+                                $logger->logUserInfo("About to post insight", __METHOD__.','.__LINE__);
+                                self::postInsight($insight, $options);
                                 $total_posted++;
                                 break;
                             }
@@ -156,7 +157,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         if ($total_posted == 0) {
                             foreach ($insights as $insight) {
                                 if (self::shouldPostInsight($insight, Insight::EMPHASIS_MED)) {
-                                    self::postInsight($insight, $logger, $options);
+                                    $logger->logUserInfo("About to post insight", __METHOD__.','.__LINE__);
+                                    self::postInsight($insight, $options);
                                     $total_posted++;
                                     break;
                                 }
@@ -220,10 +222,10 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * @return bool
      */
     private function shouldPostInsight($insight, $emphasis) {
-        $should_post = false;
         if ($insight->instance->network == "twitter" && $insight->instance->is_public == 1
             && $insight->emphasis == $emphasis && !in_array($insight->filename, $this->insight_blacklist) ) {
             if (!isset($this->twitter_users[$insight->instance->network_username])) {
+                $user_dao = DAOFactory::getDAO('UserDAO');
                 $this->twitter_users[$insight->instance->network_username] =
                     $user_dao->getUserByName($insight->instance->network_username, 'twitter');
             }
@@ -242,11 +244,29 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * Post insight headline and link to Twitter as an @reply to the user it applies to, with headline shortened to
      * fit in 140 characters.
      * @param  Insight $insight
-     * @param  Logger $logger
      * @param  arr $options
      * @return void
      */
-    private function postInsight($insight, $logger, $options) {
+    private function postInsight($insight, $options) {
+        $tweet = $this->getTweetToPost($insight);
+        $logger = Logger::getInstance();
+        $logger->logUserInfo("Posting the following tweet: ".$tweet, __METHOD__.','.__LINE__);
+        $endpoint = new TwitterAPIEndpoint("/statuses/update");
+        $api = new PosterTwitterAPIAccessorOAuth($options["oauth_access_token"]->option_value,
+            $options["oauth_access_token_secret"]->option_value,
+            $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance,
+            2300, 2);
+        $result = $api->apiPostRequest( $endpoint, array('status'=>$tweet));
+        $logger->logUserInfo(Utils::varDumpToString($result), __METHOD__.','.__LINE__);
+        $logger->logUserInfo("Tweet posted ", __METHOD__.','.__LINE__);
+    }
+    /**
+     * Get insight tweet consisting of the insight headline and link as an @reply to the user
+     * it applies to, with headline shortened to fit in 140 characters.
+     * @param  Insight $insight
+     * @return str
+     */
+    public function getTweetToPost($insight) {
         $terms = new InsightTerms($insight->instance->network);
         $headline = strip_tags(html_entity_decode($insight->headline));
         $headline = $terms->swapInSecondPerson($insight->instance->network_username, $headline);
@@ -256,19 +276,15 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
         $url = Utils::getApplicationURL()."?u=".$insight->instance->network_username."&n=".
             $insight->instance->network."&d=".$insight_date."&s=". $insight->slug;
 
-        $headline_size = 140 - (sizeof($tweet) + sizeof($url)) - 4;
-
-        $headline = substr($headline, 0, $headline_size);
-        $tweet = $tweet . $headline . "... " . $url;
-        $logger->logUserInfo("Posting the following tweet: ".$tweet, __METHOD__.','.__LINE__);
-
-        $endpoint = new TwitterAPIEndpoint("/statuses/update");
-        $api = new PosterTwitterAPIAccessorOAuth($options["oauth_access_token"]->option_value,
-            $options["oauth_access_token_secret"]->option_value,
-            $options["consumer_key"]->option_value, $options["consumer_secret"]->option_value, $insight->instance,
-            2300, 2);
-        $result = $api->apiPostRequest( $endpoint, array('status'=>$tweet));
-        $logger->logUserInfo(Utils::varDumpToString($result), __METHOD__.','.__LINE__);
-        $logger->logUserInfo("Tweet posted ", __METHOD__.','.__LINE__);
+        //If the headline is too lengthy, shorten it and add an ellipse
+        $available_chars_in_tweet = 140 - (strlen($tweet) + strlen($url));
+        if (strlen($headline) > $available_chars_in_tweet) {
+            $headline_size = 140 - (strlen($tweet) + strlen($url)) - 4;
+            $headline = substr($headline, 0, $headline_size);
+            $tweet = $tweet . trim($headline) . "... " . $url;
+        } else {
+            $tweet = $tweet . $headline . " ". $url;
+        }
+        return $tweet;
     }
 }

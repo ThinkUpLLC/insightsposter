@@ -57,6 +57,28 @@ class TestOfInsightsPosterPlugin extends ThinkUpUnitTestCase {
         $this->assertIsA($plugin, 'InsightsPosterPlugin');
     }
 
+    public function testGetTweetToPost() {
+        $builders = array();
+        $builders[] = FixtureBuilder::build('users', array('network_user_id'=>'930061', 'network'=>'twitter',
+            'follower_count'=>1050));
+        $instance = new Instance();
+        $instance->network = "twitter";
+        $instance->network_username = 'testifer';
+        $instance->network_user_id = '930061';
+
+        $insight = new Insight();
+        $insight->date = "2014-09-30";
+        $insight->slug = 'testinsight';
+        $insight->instance = $instance;
+        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you that's a really long ".
+            "headline";
+
+        $plugin = new InsightsPosterPlugin();
+        $tweet = $plugin->getTweetToPost($insight);
+        $this->assertTrue(strlen($tweet) <= 140);
+        $this->debug($tweet);
+    }
+
     public function testAPI() {
         $options = array();
         $options["oauth_token"] = '123';
