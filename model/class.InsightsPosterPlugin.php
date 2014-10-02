@@ -148,7 +148,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         //First, push HIGH emphasis
                         foreach ($insights as $insight) {
                             if (self::shouldPostInsight($insight, Insight::EMPHASIS_HIGH)) {
-                                $logger->logUserInfo("About to post insight", __METHOD__.','.__LINE__);
+                                $logger->logUserInfo("About to post insight  ". Utils::varDumpToString($insight),
+                                    __METHOD__.','.__LINE__);
                                 self::postInsight($insight, $options);
                                 $total_posted++;
                                 break;
@@ -159,7 +160,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         if ($total_posted == 0) {
                             foreach ($insights as $insight) {
                                 if (self::shouldPostInsight($insight, Insight::EMPHASIS_MED)) {
-                                    $logger->logUserInfo("About to post insight", __METHOD__.','.__LINE__);
+                                    $logger->logUserInfo("About to post insight ". Utils::varDumpToString($insight),
+                                        __METHOD__.','.__LINE__);
                                     self::postInsight($insight, $options);
                                     $total_posted++;
                                     break;
@@ -223,7 +225,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * @param  int $emphasis Either Insight::EMPHASIS_HIGH or Insight::EMPHASIS_MED
      * @return bool
      */
-    private function shouldPostInsight($insight, $emphasis) {
+    public function shouldPostInsight($insight, $emphasis) {
         if ($insight->instance->network == "twitter" && $insight->instance->is_public == 1
             && $insight->emphasis == $emphasis && !in_array($insight->filename, $this->insight_blacklist) ) {
             if (!isset($this->twitter_users[$insight->instance->network_username])) {
