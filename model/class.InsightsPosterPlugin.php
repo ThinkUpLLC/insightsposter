@@ -41,7 +41,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * Insights to exclude from posting because they're spammy or annoying
      * @var array
      */
-    var $insight_blacklist = array('biotracker.php');
+    var $insight_blacklist = array('biotracker');
 
     /**
      * Twitter users associated with the insight candidates.

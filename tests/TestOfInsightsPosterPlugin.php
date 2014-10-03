@@ -79,26 +79,48 @@ class TestOfInsightsPosterPlugin extends ThinkUpUnitTestCase {
         $this->debug($tweet);
     }
 
-    public function testShouldPostInsight() {
+    public function testShouldPostInsightInBlacklist() {
         $builders = array();
         $builders[] = FixtureBuilder::build('users', array('network_user_id'=>'930061', 'network'=>'twitter',
-            'follower_count'=>1050));
+            'follower_count'=>1050, 'user_name'=>'testifier'));
         $instance = new Instance();
         $instance->network = "twitter";
-        $instance->network_username = 'testifer';
+        $instance->network_username = 'testifier';
         $instance->network_user_id = '930061';
+        $instance->is_public = 1;
 
         $insight = new Insight();
         $insight->date = "2014-09-30";
         $insight->slug = 'testinsight';
-        $insight->instance = $instance;
-        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you that's a really long ".
-            "headline";
-        $insight->filename = 'biotracker.php';
+        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you";
+        $insight->filename = 'biotracker';
         $insight->emphasis = Insight::EMPHASIS_HIGH;
+        $insight->instance = $instance;
 
         $plugin = new InsightsPosterPlugin();
         $this->assertFalse($plugin->shouldPostInsight($insight, Insight::EMPHASIS_HIGH));
+    }
+
+    public function testShouldPostInsightNotInBlacklist() {
+        $builders = array();
+        $builders[] = FixtureBuilder::build('users', array('network_user_id'=>'930061', 'network'=>'twitter',
+            'follower_count'=>1050, 'user_name'=>'testifier'));
+        $instance = new Instance();
+        $instance->network = "twitter";
+        $instance->network_username = 'testifier';
+        $instance->network_user_id = '930061';
+        $instance->is_public = 1;
+
+        $insight = new Insight();
+        $insight->date = "2014-09-30";
+        $insight->slug = 'testinsight';
+        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you";
+        $insight->filename = 'retweet_spike';
+        $insight->emphasis = Insight::EMPHASIS_HIGH;
+        $insight->instance = $instance;
+
+        $plugin = new InsightsPosterPlugin();
+        $this->assertTrue($plugin->shouldPostInsight($insight, Insight::EMPHASIS_HIGH));
     }
 
     public function testAPI() {
