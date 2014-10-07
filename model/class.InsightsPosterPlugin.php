@@ -284,9 +284,11 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
             $insight->instance->network."&d=".$insight_date."&s=". $insight->slug;
 
         //If the headline is too lengthy, shorten it and add an ellipse
-        $available_chars_in_tweet = 140 - (strlen($tweet) + strlen($url));
+        // https t.co links are now 23 characters long
+        // https://api.twitter.com/1.1/help/configuration.json
+        $available_chars_in_tweet = 140 - (strlen($tweet) + 23 /*strlen($url)*/);
         if (strlen($headline) > $available_chars_in_tweet) {
-            $headline_size = 140 - (strlen($tweet) + strlen($url)) - 4;
+            $headline_size = 140 - (strlen($tweet) + 23 /* strlen($url)*/) - 4;
             $headline = substr($headline, 0, $headline_size);
             $tweet = $tweet . trim($headline) . "... " . $url;
         } else {

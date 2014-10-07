@@ -75,6 +75,8 @@ class TestOfInsightsPosterPlugin extends ThinkUpUnitTestCase {
 
         $plugin = new InsightsPosterPlugin();
         $tweet = $plugin->getTweetToPost($insight);
+        $tweet = str_replace('http:///?u=testifer&n=twitter&d=2014-09-30&s=testinsight', 'https://t.co/1234567890',
+            $tweet);
         $this->assertTrue(strlen($tweet) <= 140);
         $this->debug($tweet);
     }
