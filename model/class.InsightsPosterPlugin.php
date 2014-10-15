@@ -38,10 +38,16 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
     var $current_timestamp;
 
     /**
-     * Insights to exclude from posting because they're spammy or annoying
+     * Insights to exclude from posting because they're spammy or annoying by filename
      * @var array
      */
-    var $insight_blacklist = array('biotracker');
+    var $filename_blacklist = array('biotracker');
+
+    /**
+     * Insights to exclude from posting because they're spammy or annoying by slug
+     * @var array
+     */
+    var $slug_blacklist = array('fave_spike_30_day', 'retweet_spike_30_day', 'reply_spike_30_day_');
 
     /**
      * Twitter users associated with the insight candidates.
@@ -231,7 +237,8 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      */
     public function shouldPostInsight($insight, $emphasis) {
         if ($insight->instance->network == "twitter" && $insight->instance->is_public == 1
-            && $insight->emphasis == $emphasis && !in_array($insight->filename, $this->insight_blacklist) ) {
+            && $insight->emphasis == $emphasis && !in_array($insight->filename, $this->filename_blacklist)
+            && !$this->isOnSlugBlacklist($insight)) {
             if (!isset($this->twitter_users[$insight->instance->network_username])) {
                 $user_dao = DAOFactory::getDAO('UserDAO');
                 $this->twitter_users[$insight->instance->network_username] =
@@ -244,6 +251,19 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                 $logger->logUserInfo( $this->twitter_users[$insight->instance->network_username]->follower_count.
                     " under follower count threshold", __METHOD__.','.__LINE__);
                 return false;
+            }
+        }
+        return false;
+    }
+    /**
+     * Is this insight on the slug blacklist? Does the insight's slug start with any on the blacklist?
+     * @param  Insight  $insight
+     * @return bool
+     */
+    public function isOnSlugBlacklist($insight) {
+        foreach ($this->slug_blacklist as $blacklisted_slug) {
+            if (0 === strpos($insight->slug, $blacklisted_slug)) {
+                return true;
             }
         }
         return false;

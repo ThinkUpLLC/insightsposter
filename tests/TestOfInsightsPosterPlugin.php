@@ -125,6 +125,38 @@ class TestOfInsightsPosterPlugin extends ThinkUpUnitTestCase {
         $this->assertTrue($plugin->shouldPostInsight($insight, Insight::EMPHASIS_HIGH));
     }
 
+    public function testIsInsightOnSlugBlacklist() {
+        $builders = array();
+        $builders[] = FixtureBuilder::build('users', array('network_user_id'=>'930061', 'network'=>'twitter',
+            'follower_count'=>1050, 'user_name'=>'testifier'));
+        $instance = new Instance();
+        $instance->network = "twitter";
+        $instance->network_username = 'testifier';
+        $instance->network_user_id = '930061';
+        $instance->is_public = 1;
+
+        $insight = new Insight();
+        $insight->date = "2014-09-30";
+        $insight->slug = 'reply_spike_30_day_818983';
+        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you";
+        $insight->filename = 'retweet_spike';
+        $insight->emphasis = Insight::EMPHASIS_HIGH;
+        $insight->instance = $instance;
+
+        $plugin = new InsightsPosterPlugin();
+        $this->assertTrue($plugin->isOnSlugBlacklist($insight));
+
+        $insight = new Insight();
+        $insight->date = "2014-09-30";
+        $insight->slug = 'asdfasd';
+        $insight->headline ="322,650 more people saw @helenhousandi's tweet thanks to you";
+        $insight->filename = 'retweet_spike';
+        $insight->emphasis = Insight::EMPHASIS_HIGH;
+        $insight->instance = $instance;
+
+        $this->assertFalse($plugin->isOnSlugBlacklist($insight));
+    }
+
     public function testAPI() {
         $options = array();
         $options["oauth_token"] = '123';
