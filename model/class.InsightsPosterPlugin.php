@@ -162,8 +162,6 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                                 break;
                             }
                         }
-                        /*
-                        Only push HIGH emphasis insights for now while we iterate on headlines
                         $logger->logUserInfo("Moving onto MED emphasis", __METHOD__.','.__LINE__);
                         //If HIGH emphasis insight didn't exist, push MED
                         if ($total_posted == 0) {
@@ -177,7 +175,6 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                                 }
                             }
                         }
-                         */
 
                         if ($total_posted > 0) {
                             // Update $last_post_completion in plugin settings
