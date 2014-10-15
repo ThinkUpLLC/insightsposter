@@ -107,9 +107,10 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                     $logger->logUserInfo("Last post completion was ".$last_post_completion, __METHOD__.','.__LINE__);
                     $last_post_day = substr($last_post_completion, 0, 10);
                     $today = date('Y-m-d');
-                    if ($last_post_day !== $today) {
-                        $logger->logUserInfo("No post today ".$today. " != ".$last_post_day,
-                            __METHOD__.','.__LINE__);
+                    $yesterday = date('Y-m-d', strtotime("-1 days"));
+                    if ($last_post_day !== $today && $last_post_day !== $yesterday) {
+                        $logger->logUserInfo("No post today or yesterday ".$last_post_day. " != ".$today.
+                            " or ".$yesterday, __METHOD__.','.__LINE__);
                         $do_post = true;
                     }
                 } else {
