@@ -78,6 +78,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
     public function crawl() {
         //set up logging
         $logger = Logger::getInstance();
+        $logger->setUsername(Session::getLoggedInUser());
         $logger->logUserSuccess("Starting insights poster", __METHOD__.','.__LINE__);
 
         //get plugin settings
