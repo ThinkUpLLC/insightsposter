@@ -116,9 +116,10 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                     $last_post_day = substr($last_post_completion, 0, 10);
                     $today = date('Y-m-d');
                     $yesterday = date('Y-m-d', strtotime("-1 days"));
-                    if ($last_post_day !== $today && $last_post_day !== $yesterday) {
-                        $logger->logUserInfo("No post today or yesterday ".$last_post_day. " != ".$today.
-                            " or ".$yesterday, __METHOD__.','.__LINE__);
+                    $day_before = date('Y-m-d', strtotime("-2 days"));
+                    if ($last_post_day !== $today && $last_post_day !== $yesterday && $last_post_day !== $day_before) {
+                        $logger->logUserInfo("No post today, yesterday or day before".$last_post_day. " != ".$today.
+                            " or ".$yesterday." or ".$day_before, __METHOD__.','.__LINE__);
                         $do_post = true;
                     }
                 } else {
@@ -202,7 +203,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         $logger->logInfo("No insights to post", __METHOD__.','.__LINE__);
                     }
                 } else {
-                    $logger->logInfo("Insight has been posted already today", __METHOD__.','.__LINE__);
+                    $logger->logInfo("Insight already posted", __METHOD__.','.__LINE__);
                 }
             } else {
                 $logger->logInfo("It's too early in the am for posting insights", __METHOD__.','.__LINE__);
