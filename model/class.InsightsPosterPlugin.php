@@ -56,6 +56,12 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      */
     var $twitter_users = array();
 
+    /**
+     * The insight that was posted.
+     * @var Insight
+     */
+    var $posted_insight = null;
+
     public function __construct($vals=null) {
         parent::__construct($vals);
         $this->folder_name = 'insightsposter';
@@ -149,9 +155,14 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                             $insights = $insight_dao->getAllOwnerInstanceInsights($owner->id, $page_count=1);
                         }
                     }
-                    $total_posted = 0;
                     if (sizeof($insights) > 0) {
                         $user_dao = DAOFactory::getDAO('UserDAO');
+
+                        //Add the last insight posted to the filename blacklist so user doesn't get 2 same consecutively
+                        if (isset($options['last_insight_posted']->option_value)) {
+                            $this->filename_blacklist[] = $options['last_insight_posted']->option_value;
+                        }
+
                         $logger->logUserInfo("Insight candidates to push, only choosing HIGH emphasis",
                             __METHOD__.','.__LINE__);
 
@@ -161,25 +172,25 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                                 $logger->logUserInfo("About to post insight  ". Utils::varDumpToString($insight),
                                     __METHOD__.','.__LINE__);
                                 self::postInsight($insight, $options);
-                                $total_posted++;
+                                $this->posted_insight = $insight;
                                 break;
                             }
                         }
                         $logger->logUserInfo("Moving onto MED emphasis", __METHOD__.','.__LINE__);
                         //If HIGH emphasis insight didn't exist, push MED
-                        if ($total_posted == 0) {
+                        if (isset($this->posted_insight)) {
                             foreach ($insights as $insight) {
                                 if (self::shouldPostInsight($insight, Insight::EMPHASIS_MED)) {
                                     $logger->logUserInfo("About to post insight ". Utils::varDumpToString($insight),
                                         __METHOD__.','.__LINE__);
                                     self::postInsight($insight, $options);
-                                    $total_posted++;
+                                    $this->posted_insight = $insight;
                                     break;
                                 }
                             }
                         }
 
-                        if ($total_posted > 0) {
+                        if (isset($this->posted_insight)) {
                             // Update $last_post_completion in plugin settings
                             if (isset($options['last_post_completion']->id)) {
                                 //update option
@@ -194,13 +205,28 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                                     date('Y-m-d H:i:s'));
                                 $logger->logInfo("Inserted option ID ".$result, __METHOD__.','.__LINE__);
                             }
+                            // Update $last_insight_posted in plugin settings
+                            if (isset($options['last_insight_posted']->id)) {
+                                //update option
+                                $result = $plugin_option_dao->updateOption($options['last_insight_posted']->id,
+                                    'last_insight_posted', $this->posted_insight->filename);
+                                $logger->logInfo("Updated ".$result." option", __METHOD__.','.__LINE__);
+                            } else {
+                                //insert option
+                                $plugin_dao = DAOFactory::getDAO('PluginDAO');
+                                $plugin_id = $plugin_dao->getPluginId('insightsposter');
+                                $result = $plugin_option_dao->insertOption($plugin_id, 'last_insight_posted',
+                                    $this->posted_insight->filename);
+                                $logger->logInfo("Inserted option ID ".$result, __METHOD__.','.__LINE__);
+                            }
+
+                            $logger->logUserSuccess("Posted insight", __METHOD__.','.__LINE__);
+                        } else {
+                            $logger->logInfo("No whitelist insights of the right emphasis to post", 
+                                __METHOD__.','.__LINE__);
                         }
-                    }
-                    if ($total_posted > 0) {
-                        $logger->logUserSuccess("Posted ".$total_posted." insight".(($total_posted == 1)?'':'s'),
-                            __METHOD__.','.__LINE__);
                     } else {
-                        $logger->logInfo("No insights to post", __METHOD__.','.__LINE__);
+                        $logger->logInfo("No new insights available", __METHOD__.','.__LINE__);
                     }
                 } else {
                     $logger->logInfo("Insight already posted", __METHOD__.','.__LINE__);
