@@ -178,7 +178,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                         }
                         $logger->logUserInfo("Moving onto MED emphasis", __METHOD__.','.__LINE__);
                         //If HIGH emphasis insight didn't exist, push MED
-                        if (isset($this->posted_insight)) {
+                        if (!isset($this->posted_insight)) {
                             foreach ($insights as $insight) {
                                 if (self::shouldPostInsight($insight, Insight::EMPHASIS_MED)) {
                                     $logger->logUserInfo("About to post insight ". Utils::varDumpToString($insight),
