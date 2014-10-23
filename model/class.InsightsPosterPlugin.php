@@ -48,7 +48,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * @var array
      */
     var $slug_blacklist = array('fave_spike_30_day', 'retweet_spike_30_day', 'reply_spike_30_day_',
-        'least_likely_followers');
+        'least_likely_followers', 'verified_followers');
 
     /**
      * Twitter users associated with the insight candidates.
@@ -222,7 +222,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
 
                             $logger->logUserSuccess("Posted insight", __METHOD__.','.__LINE__);
                         } else {
-                            $logger->logInfo("No whitelist insights of the right emphasis to post", 
+                            $logger->logInfo("No whitelist insights of the right emphasis to post",
                                 __METHOD__.','.__LINE__);
                         }
                     } else {
