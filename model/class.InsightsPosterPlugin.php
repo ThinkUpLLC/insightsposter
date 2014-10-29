@@ -41,7 +41,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * Insights to exclude from posting because they're spammy or annoying by filename
      * @var array
      */
-    var $filename_blacklist = array('biotracker', 'weeklygraph');
+    var $filename_blacklist = array('biotracker', 'weeklygraph', 'interactions');
 
     /**
      * Insights to exclude from posting because they're spammy or annoying by slug
