@@ -242,7 +242,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * - The instance is public
      * - The emphasis is high enough
      * - The insight is not on the blacklist
-     * - The instance Twitter user has more than 1k followers
+     * - The instance Twitter user has more than 100 followers
      *
      * @param  Insight $insight
      * @param  int $emphasis Either Insight::EMPHASIS_HIGH or Insight::EMPHASIS_MED
@@ -257,7 +257,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
                 $this->twitter_users[$insight->instance->network_username] =
                     $user_dao->getUserByName($insight->instance->network_username, 'twitter');
             }
-            if ($this->twitter_users[$insight->instance->network_username]->follower_count > 1000) {
+            if ($this->twitter_users[$insight->instance->network_username]->follower_count > 100) {
                 return true;
             } else {
                 $logger = Logger::getInstance();
