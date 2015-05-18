@@ -48,7 +48,7 @@ class InsightsPosterPlugin extends Plugin implements CrawlerPlugin {
      * @var array
      */
     var $slug_blacklist = array('fave_spike_30_day', 'retweet_spike_30_day', 'reply_spike_30_day_',
-        'least_likely_followers', 'verified_followers');
+        'least_likely_followers', 'verified_followers', 'bestie');
 
     /**
      * Twitter users associated with the insight candidates.
